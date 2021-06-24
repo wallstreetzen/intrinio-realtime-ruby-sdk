@@ -103,7 +103,7 @@ module Intrinio
 
         @api_key = options[:api_key]
         raise "API Key was formatted invalidly." if @api_key && !valid_api_key?(@api_key)
-		
+
         unless @api_key
           @username = options[:username]
           @password = options[:password]
@@ -137,7 +137,7 @@ module Intrinio
         raise "Invalid channels to join: #{bad_channels}" unless bad_channels.empty?
 
         if options[:logger] == false
-          @logger = nil 
+          @logger = nil
         elsif !options[:logger].nil?
           @logger = options[:logger]
         else
@@ -156,30 +156,30 @@ module Intrinio
       def provider
         @provider
       end
-      
+
       def join(*channels)
         channels = parse_channels(channels)
         nonconforming = channels.select{|x| !x.is_a?(String)}
         return error("Invalid channels to join: #{nonconforming}") unless nonconforming.empty?
-        
+
         @channels.concat(channels)
         @channels.uniq!
         debug "Joining channels #{channels}"
-        
+
         refresh_channels()
       end
-      
+
       def leave(*channels)
         channels = parse_channels(channels)
         nonconforming = channels.find{|x| !x.is_a?(String)}
         return error("Invalid channels to leave: #{nonconforming}") unless nonconforming.empty?
-        
+
         channels.each{|c| @channels.delete(c)}
         debug "Leaving channels #{channels}"
-        
+
         refresh_channels()
       end
-      
+
       def leave_all
         @channels = []
         debug "Leaving all channels"
@@ -190,7 +190,7 @@ module Intrinio
         raise "Must be run from within an EventMachine run loop" unless EM.reactor_running?
         return warn("Already connected!") if @ready
         debug "Connecting..."
-        
+
         catch :fatal do
           begin
             @closing = false
@@ -203,7 +203,7 @@ module Intrinio
           end
         end
       end
-      
+
       def disconnect
         EM.cancel_timer(@heartbeat_timer) if @heartbeat_timer
         EM.cancel_timer(@selfheal_timer) if @selfheal_timer
@@ -233,7 +233,7 @@ module Intrinio
       def on_quote(on_quote)
         @on_quote = on_quote
       end
-      
+
       private
 
       def queue_message(message)
@@ -345,11 +345,11 @@ module Intrinio
         @token = response.body
         debug "Token refreshed"
       end
-      
-      def auth_url 
+
+      def auth_url
         url = ""
 
-        case @provider 
+        case @provider
         when REALTIME then url = "https://realtime-mx.intrinio.com/auth"
         when DELAYED_SIP then url = "https://realtime-delayed-sip.intrinio.com/auth"
 		    when MANUAL then url = "http://" + @ip_address + "/auth"
@@ -370,7 +370,7 @@ module Intrinio
         "#{url}api_key=#{@api_key}"
       end
 
-      def socket_url 
+      def socket_url
         case @provider
         when REALTIME then "wss://realtime-mx.intrinio.com/socket/websocket?vsn=1.0.0&token=#{@token}"
         when DELAYED_SIP then "wss://realtime-delayed-sip.intrinio.com/socket/websocket?vsn=1.0.0&token=#{@token}"
@@ -397,7 +397,7 @@ module Intrinio
         @threads = []
         @stop = false
         @thread_quantity.times {@threads << Thread.new{handle_data}}
-        
+
         @ws = ws = WebSocket::Client::Simple.connect(socket_url)
         me.send :info, "Connection opening"
 
@@ -422,7 +422,7 @@ module Intrinio
             me.send :error, "Error adding message to queue: #{data_message} #{e}"
           end
         end
-        
+
         ws.on :close do |e|
           me.send :ready, false
           me.send :info, "Connection closing...: #{e}"
@@ -435,11 +435,11 @@ module Intrinio
           me.send :try_self_heal
         end
       end
-      
+
       def refresh_channels
         return unless @ready
         debug "Refreshing channels"
-        
+
         # Join new channels
         new_channels = @channels - @joined_channels
         new_channels.each do |channel|
@@ -449,7 +449,7 @@ module Intrinio
           @ws.send(msg)
           info "Joined #{channel}"
         end
-        
+
         # Leave old channels
         old_channels = @joined_channels - @channels
         old_channels.each do |channel|
@@ -459,12 +459,12 @@ module Intrinio
           @ws.send(msg)
           info "Left #{channel}"
         end
-        
+
         @channels.uniq!
         @joined_channels = Array.new(@channels)
         debug "Current channels: #{@channels}"
       end
-      
+
       def start_heartbeat
         EM.cancel_timer(@heartbeat_timer) if @heartbeat_timer
         @heartbeat_timer = EM.add_periodic_timer(HEARTBEAT_TIME) do
@@ -474,72 +474,85 @@ module Intrinio
           end
         end
       end
-      
+
       def heartbeat_msg
         ""
       end
-      
+
       def stop_heartbeat
         EM.cancel_timer(@heartbeat_timer) if @heartbeat_timer
       end
-      
+
       def try_self_heal
         return if @closing
         debug "Attempting to self-heal"
-        
+
         time = @selfheal_backoffs.first
         @selfheal_backoffs.delete_at(0) if @selfheal_backoffs.count > 1
-        
+
         EM.cancel_timer(@heartbeat_timer) if @heartbeat_timer
         EM.cancel_timer(@selfheal_timer) if @selfheal_timer
-        
+
         @selfheal_timer = EM.add_timer(time/1000) do
           connect()
         end
       end
-      
+
       def stop_self_heal
         EM.cancel_timer(@selfheal_timer) if @selfheal_timer
         @selfheal_backoffs = Array.new(SELF_HEAL_BACKOFFS)
       end
-      
+
       def ready(val)
         @ready = val
       end
 
       def debug(message)
         message = "IntrinioRealtime | #{message}"
-        @logger.debug(message) rescue
-        nil
+        begin
+          @logger.debug(message)
+        rescue StandardError
+          nil
+        end
       end
-      
+
       def info(message)
         message = "IntrinioRealtime | #{message}"
-        @logger.info(message) rescue
-        nil
+        begin
+          @logger.info(message)
+        rescue StandardError
+          nil
+        end
       end
-      
+
       def error(message)
         message = "IntrinioRealtime | #{message}"
-        @logger.error(message) rescue
-        nil
+        begin
+          @logger.error(message)
+        rescue StandardError
+          nil
+        end
       end
-      
+
       def fatal(message)
         message = "IntrinioRealtime | #{message}"
-        @logger.fatal(message) rescue
+        begin
+          @logger.fatal(message)
+        rescue StandardError
+          nil
+        end
         EM.stop_event_loop
         throw :fatal
         nil
       end
-      
+
       def parse_channels(channels)
         channels.flatten!
         channels.uniq!
         channels.compact!
         channels
       end
-      
+
       def join_binary_message(channel)
         if (channel == "lobby") && (@trades_only == false)
           return [74, 0, 36, 70, 73, 82, 69, 72, 79, 83, 69].pack('C*') #74, not trades only, "$FIREHOSE"
