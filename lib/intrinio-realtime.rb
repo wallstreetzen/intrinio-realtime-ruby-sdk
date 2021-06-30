@@ -423,9 +423,9 @@ module Intrinio
           end
         end
 
-        ws.onclose do |e|
+        ws.onclose do |code, reason|
           me.send :ready, false
-          me.send :info, "Connection closing...: #{e}"
+          me.send :error, "Connection closed: #{code} #{reason}"
           me.send :try_self_heal
         end
 
