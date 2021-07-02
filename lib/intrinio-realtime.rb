@@ -2,7 +2,7 @@ require 'logger'
 require 'uri'
 require 'http'
 require 'eventmachine'
-require 'websocket-client-simple'
+require 'websocket-eventmachine-client'
 
 module Intrinio
   module Realtime
@@ -194,10 +194,10 @@ module Intrinio
         @ready = false
         @joined_channels = []
 
-        @ws = ws = WebSocket::Client::Simple.connect(socket_url)
+        @ws = ws = WebSocket::EventMachine::Client.connect(uri: socket_url)
         me.send :info, "Connection opening"
 
-        ws.on :open do
+        ws.onopen do
           me.send :info, "Connection established"
           me.send :ready, true
           if [IEX, CRYPTOQUOTE, FXCM].include?(me.send(:provider))
@@ -207,8 +207,7 @@ module Intrinio
           me.send :stop_self_heal
         end
 
-        ws.on :message do |frame|
-          message = frame.data
+        ws.onmessage do |message|
           me.send :debug, "Message: #{message}"
 
           begin
@@ -248,13 +247,13 @@ module Intrinio
           end
         end
 
-        ws.on :close do |e|
+        ws.onclose do |code, reason|
           me.send :ready, false
-          me.send :error, "Connection closed: #{e}"
+          me.send :error, "Connection closed: #{code} #{reason}"
           me.send :try_self_heal
         end
 
-        ws.on :error do |e|
+        ws.onerror do |e|
           me.send :ready, false
           me.send :error, "Connection error: #{e}"
           me.send :try_self_heal
