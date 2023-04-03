@@ -180,10 +180,10 @@ module Intrinio
 
       def socket_url
         case @provider
-        when IEX then URI.escape("wss://realtime.intrinio.com/socket/websocket?vsn=1.0.0&token=#{@token}")
-        when QUODD then URI.escape("wss://www5.quodd.com/websocket/webStreamer/intrinio/#{@token}")
-        when CRYPTOQUOTE then URI.escape("wss://crypto.intrinio.com/socket/websocket?vsn=1.0.0&token=#{@token}")
-        when FXCM then URI.escape("wss://fxcm.intrinio.com/socket/websocket?vsn=1.0.0&token=#{@token}")
+        when IEX then "wss://realtime.intrinio.com/socket/websocket?vsn=1.0.0&token=#{@token}"
+        when QUODD then "wss://www5.quodd.com/websocket/webStreamer/intrinio/#{@token}"
+        when CRYPTOQUOTE then "wss://crypto.intrinio.com/socket/websocket?vsn=1.0.0&token=#{@token}"
+        when FXCM then "wss://fxcm.intrinio.com/socket/websocket?vsn=1.0.0&token=#{@token}"
         end
       end
 
