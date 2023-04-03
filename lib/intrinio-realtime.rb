@@ -339,11 +339,18 @@ module Intrinio
       def refresh_token
         @token = nil
 
-        if @api_key
-          response = HTTP.get(auth_url)
-        else
-          response = HTTP.basic_auth(:user => @username, :pass => @password).get(auth_url)
+        uri = URI.parse(auth_url)
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl = true if (auth_url.include?("https"))
+        http.start
+        request = Net::HTTP::Get.new(uri.request_uri)
+        request.add_field("Client-Information", "IntrinioRealtimeRubySDKv4.1")
+
+        unless @api_key
+          request.basic_auth(@username, @password)
         end
+
+        response = http.request(request)
 
         return fatal("Unable to authorize") if response.status == 401
         if response.status != 200
