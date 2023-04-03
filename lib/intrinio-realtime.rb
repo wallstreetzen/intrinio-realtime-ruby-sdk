@@ -19,6 +19,19 @@ module Intrinio
     def self.connect(options, on_trade, on_quote)
       EM.run do
         client = ::Intrinio::Realtime::Client.new(options, on_trade, on_quote)
+
+        # EM.run finishes loop when client calls stop_event_loop
+        # https://rdoc.info/github/eventmachine/eventmachine/EventMachine#stop_event_loop-class_method
+        EventMachine.add_shutdown_hook do
+          begin
+            info "Attempting to disconnect client."
+            client&.disconnect
+          rescue StandardError => e
+            error e
+            Process.kill("TERM", 0)
+          end
+        end
+
         client.connect()
       end
     end
